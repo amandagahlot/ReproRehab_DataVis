@@ -1,6 +1,6 @@
 ---
 title: "Visualizing and Exploring Data"
-author: "Amanda Gahlot PhD OTR/L"
+author: "Amanda Gahlot PhD OTR/L (<a href='mailto:alg8344@nyu.edu'>alg8344@nyu.edu</a>)"
 date: "03.25.2025"
 output:
   html_document:
@@ -23,9 +23,7 @@ We'll cover the following key areas:
 
 **Creating and Formatting Tables** Discover strategies for generating clean, organized tables that are easily exported to Word documents for further editing and refinement.
 
-**Correlation Plots and Heatmaps** Explore methods for visualizing variable relationships using correlation matrices and heatmaps to reveal key patterns in your data.
-
-**Regression Plots and 3D Regression Lines** Learn to build compelling regression plots and 3D visualizations that effectively illustrate complex relationships.
+**Correlation Plots** Explore methods for visualizing variable relationships using correlation matrices and heatmaps to reveal key patterns in your data.
 
 **Interactive Visualizations** Discover dynamic plotting techniques that engage viewers and allow for deeper data exploration.
 
@@ -35,40 +33,62 @@ This structured approach will equip you with reusable tools to make your work mo
 
 # Set Up 
 
-## Chunks
+## Project
 
-Including this chunk in your setup creates a smoother, cleaner document with minimal distractions—especially helpful when sharing visualizations with others.
+For each new project, it's best to create a dedicated environment and project in R Studio. This approach helps to:
 
-This code ensures that, unless otherwise specified in a specific chunk of code, all chunks will read as such.
+-- Keep your files organized and isolated from other projects
+
+-- Manage dependencies effectively
+
+-- Improve reproducibility by ensuring your code runs consistently in the same environment
+
+As Stephen Covey famously said, *"Begin with the end in mind."* This mindset is key to ensuring your research is reproducible. Knowing I'll eventually share my visualizations and use GitHub for version control, I set up my project like this:
+
+1. Start new repository in GitHub: For this one, I'm calling it ReproRehab_DataVis
+
+2. Start new project in R Studio (File -> New Project -> Version Control) and link it to the new repository. I am calling this project "DataVis_Project" *if you haven't linked your R Studio with your GitHub, you'll need to do that first*
+
+It's that simple. Now when you're done with your script, you can push directly to your GitHub repository.
+
+
+## R Notebook
+
+In your new environment, go to File -> New File -> R Notebook.
+
+R Notebooks offer a clean, streamlined way to combine code, output, and narrative in one document. This makes them ideal for sharing visualizations and insights without overwhelming readers with excess code.
+
+By including this setup chunk, you can control how code and output appear, ensuring your document stays clear and focused. This is especially useful when presenting results to audiences who may not be familiar with R.
+
+#### Chunks
+
+A chunk in R Notebook is a block of code enclosed in triple backticks ( ```{} `). The content inside runs like regular R code.
+
+You can customize how chunks appear in the final knitted document using options inside the curly braces {}. 
+
+These options help control what your audience sees, keeping your document clean and focused.
+
+The code below ensures that, unless otherwise specified in a specific chunk of code, all chunks will read as such.
 
 ```{r prelims, echo=TRUE}
 knitr::opts_chunk$set(message = FALSE, warning = FALSE, results = 'asis')
 #
 ```
 
-Why Include This in Your Setup?
+Now all of my chunks of code below will be included in my knitted, final document, but any messages or warnings will not. If you want to exclude your code, you can set as include=FALSE. 
 
-*message = FALSE*
-
-Purpose: Suppresses package loading messages.
-
-Why Important: When you load packages like ggplot2, dplyr, or tidyverse, they often generate informational messages. While useful during development, these messages add clutter to your final document. Disabling them keeps the focus on your content.
-
-*warning = FALSE*
-
-Purpose: Hides warnings from appearing in your output.
-
-Why Important: While warnings are important during coding, they can distract readers in a presentation or report. By suppressing them, you ensure a cleaner final product. (Be mindful, though — address warnings in your code rather than relying solely on suppression.)
+For data visualization, make sure you have:
 
 *results = 'asis'*
 
-Purpose: Ensures that outputs like tables or text appear as intended without additional formatting applied by R Markdown.
-
-Why Important: This is particularly useful when creating formatted tables using packages like kableExtra or gt, as it ensures the structure is preserved in the output.
+This ensures that outputs like tables or text appear as intended without additional formatting applied by R Markdown.
 
 ## Set Working Directory
 
 When working with visualizations, it’s important to start by setting your working directory. This practice ensures that all saved outputs—such as tables, images (.png), and knitted HTML files—are organized within one folder. This structure simplifies the process of sharing your visualizations by allowing you to easily upload the entire folder to GitHub or other platforms.
+
+When you initiated your new Project in R Studio, it should have created a folder on your hard drive. For simplicity, use that folder as your working directory. For me that is:
+Macintosh HD > Users > amandagahlot > DataVis_Project
 
 ```{r set wd}
 setwd("/Users/amandagahlot/DataVis_Project") #replace your pathname here
@@ -93,6 +113,9 @@ Then import your data set
 df <- read_excel('synthetic_data.xlsx') #no need for pathname because we've set up our working directory
 
 ```
+# Tables
+
+Creating tables in R and saving as word docs decreasing the risk of transposing numbers incorrectly and ultimately saves time. Below, I use the gt and gtsummary packages to create tables. You can use these as templates for your own work!
 
 ## Renaming variables
 
@@ -137,11 +160,6 @@ Now I have two data frames, the original "df" which is still numeric and df_demo
 
 Finally, I rename the variables with more meaningful names. Depending on your workflow, you can keep this with df_demo or create a third dataframe for visualizations, which I have done below:
 
-
-
-# Tables
-
-Creating tables in R and saving as word docs decreasing the risk of transposing numbers incorrectly and ultimately saves time. Below, I use the gt and gtsummary packages to create tables. You can use these as templates for your own work!
 
 ## Descriptives
 When providing descriptive statistics on your participants:
@@ -284,9 +302,9 @@ all_variables <- intersect(all_variables, colnames(df))  # Ensure selected varia
 all_variables_df <- df[, all_variables]
 
 # Compute correlation matrix and p-values
-cor_matrix <- rcorr(as.matrix(all_variables_df), type = "spearman")$r
+cor_matrix <- rcorr(as.matrix(all_variables_df), type = "pearson")$r
 cor_matrix[upper.tri(cor_matrix)] <- NA
-p_matrix <- rcorr(as.matrix(all_variables_df), type = "spearman")$P
+p_matrix <- rcorr(as.matrix(all_variables_df), type = "pearson")$P
 p_matrix[is.na(p_matrix)] = .0000001
 p_matrix[upper.tri(p_matrix)] <- NA
 
@@ -388,9 +406,9 @@ all_variables <- intersect(all_variables, colnames(df2))  # Ensure selected vari
 all_variables_df2 <- df2[, all_variables]
 
 # Compute correlation matrix and p-values
-cor_matrix <- rcorr(as.matrix(all_variables_df2), type = "spearman")$r
+cor_matrix <- rcorr(as.matrix(all_variables_df2), type = "pearson")$r
 cor_matrix[upper.tri(cor_matrix)] <- NA
-p_matrix <- rcorr(as.matrix(all_variables_df2), type = "spearman")$P
+p_matrix <- rcorr(as.matrix(all_variables_df2), type = "pearson")$P
 p_matrix[is.na(p_matrix)] = .0000001
 p_matrix[upper.tri(p_matrix)] <- NA
 
@@ -433,7 +451,7 @@ interactive_corr
 
 ## Gahlot Plot
 
-To have a ready to go publishable corr plot, I created the following code: 
+To have a ready to go publishable corr plot, I created the code below. I've used portions of this for many presentations and in papers with excellent feedback and very little effort on my end. 
  
 ```{r gahlot plot, fig.width=15,fig.height=15}
 library(ggplot2)
@@ -501,6 +519,10 @@ ggsave("correlation_matrix_plot.png", plot = p, width = 15, height = 15, dpi = 3
 #play with width and height to get the proportions right
 ```
 
+With a little screen shot and quick edits in any editing software (I use keynote), it can look like this:
+
+![Correlation Matrix](Final_Corr.png)
+
 # Interactive plots
 
 Interactive plots are a great way to be truly transparent with your data and allow others to explore it. Embedding interactive charts in your code will help your collaborators and can even be transformed into an interactive website. Below, I'll review a few different types of interactive plots. Two really wonderful websites for interactive data visualization are below: 
@@ -508,6 +530,8 @@ Interactive plots are a great way to be truly transparent with your data and all
 https://r-graph-gallery.com/interactive-charts.html
 
 https://www.data-to-viz.com
+
+There are a few packages that work for interactive plots. I prefer plotly as there seems to be less drama with it compared to some others.
 
 ## Scatter Plots
 
@@ -518,8 +542,8 @@ Below we are looking at the relationship between Apathy and Social Re-engagement
 ```{r}
 interactive_scatter <- plot_ly(
   data = df_demo,
-  x = ~frsbe_apathy,
-  y = ~acss_retain,
+  x = ~frsbe_apathy, #x axis variable
+  y = ~acss_retain, #y-axis variable
   type = 'scatter',
   mode = 'markers',
   text = ~paste("Apathy Score: ", frsbe_apathy, "<br>Social Re-engagement: ", acss_retain, "<br>record_id: ", record_id), #This is what will show when you hover over a plot. You can add your record_id or Participant id variable so when you hover over an outlier, you can identify it quickly
@@ -691,7 +715,7 @@ p
 ```
 
 
-## Stacked area
+## Stacked Plots
 An interactive stacked plot for longitudinal data is particularly useful because it allows us to visualize changes over time in a clear, dynamic way. 
 
 In this example, we'll understand why I have so many friends my age with the name Amanda
@@ -738,13 +762,13 @@ Additionally, knitting your document will help identify any bugs or issues with 
 
 Once you select "Knit" to HTML, your html file will save to your working directory. You can set up your R Notebook to default knit to HTML as well with output: html at the start of your document.
 
-**PRO TIP**
+**PRO TIPS**
 
 *Knitting works a little differently than running code.* And code that seems to work in R Studio may not work when you knit, so you may need to trouble shoot a bit. 
 
 *Additionally, you can also customize what is shown and what is not.* For example, when I share my work with a colleague who does not know R, I often 'hide' the code to make it cleaner and easier to follow.
 
-*Knitting to PDF* Doesn't allow you to use the interactive plots effectively. I recommend only knitting to html for interactive plots and data visualization.
+*Knitting to PDF* A PDF does not allow you to use the interactive plots effectively. I recommend only knitting to html for interactive plots and data visualization.
 
 You can find out more about how to customize your output here: https://bookdown.org/yihui/rmarkdown/notebook.html
 
@@ -752,16 +776,62 @@ You can find out more about how to customize your output here: https://bookdown.
 
 Once you have an html file, you can host it as a website in a variety of different ways. One includes using GitHub, which (depending on your workflow) may allow for more reproducibility and transparency with your work. 
 
+There are many tutorials and videos on how to host a static website through GitHub. For me, because I'm working in R Studio anyway, I create a new version control project and link that to the corresponding repository on GitHub. When I'm done writing the script, I commit to git (or push changes when I make them) and include the html knitted file in with the .rmd file. 
+
+To then turn this pushed html file into a website, you add the name of the file.html onto the link and it should work.
+
+*For example my repository on GitHub is:  https://amandagahlot.github.io/ReproRehab_DataVis/
+And so I added DataVis.html to go to the website: https://amandagahlot.github.io/ReproRehab_DataVis/DataVis.html *
+
+## 3. Saving widgets
+Saving interactive html widgets to embed them in other platforms and documents can be finicky. 
+
+Step 1: Required packages
+```{r}
+#install.packages("htmlwidgets")
+library(htmlwidgets)
+library(plotly)
+```
+
+Step 2: Save your plot
+
+```{r}
+saveWidget(interactive_bubble, "interactive_plot.html", selfcontained = TRUE)
+```
+
+## 4. Sharing in Presentation
+
+This is tricky. Powerpoint, Keynote, and Google Slides have eliminated the add ons that once allowed us to embed html files into the presentation Work arounds (like embedding in Polls Everywhere or Menti) are not often successful. But fear not. Where there is a will there is a way. 
+
+To allow an audience to engage with your data, you can QR code your website (see 2: Commit to Git) and they can go through your entire knitted file. OR, you can share 1 interactive plot with them (my recommendation)
+
+To do this:
+
+1. Save specific interactive plot as an html (see 3. Saving Widgets)
+
+2. Push that widget html file to your Git respository
+
+3. Create your website based on that new widget. *In my example, this would be: https://amandagahlot.github.io/ReproRehab_DataVis/interactive_plot.html *
+
+4. Create a static QR code for that website
 
 
+![QR Code](QR_Code.png)
 
-Some general thoughts:
 
-- R is finicky when it comes to packages. Often packages that are loaded early are masked by packages loaded late. If you had a code that *was* working, but now is not-- check your packages. For me, d3heatmap package maskedmy print() function and I had to "turn off" d3heatmap to get my code to work.
+# Final Thoughts
 
-- There are a lot of time series visuals that I didn't review as I have worked more in cross sectional data.. explore data-to-viz.com to check them out.
+## R Packages
 
-- Python. Seaborn library (for me) is far superior with creating side by side visuals for looking at relationships. Check it out... Start a new Google Colab and enter the code below:
+- R is finicky when it comes to packages. Often packages that are loaded early are masked by packages loaded late. If you had a code that *was* working, but now is not-- check your packages. For me, d3heatmap package maskedmy print() function and I had to "turn off" d3heatmap to get my code to work. This is another reason to have a separate environment for your data visualizations
+
+## Time Series
+
+- There are a lot of time series visuals that I didn't review as I have worked more in cross sectional data. Explore data-to-viz.com to check them out.
+
+## Python
+
+Seaborn library (for me) is far superior with creating side by side visuals for looking at relationships. Check it out... Start a new Google Colab and enter the code below:
 
 import seaborn as sns
 df = sns.load_dataset('iris')
@@ -774,3 +844,5 @@ sns_plot.savefig("IMG/correlogram1.png")
 Or make it a regression
 >sns_plot = sns.pairplot(df, kind="reg")
 sns_plot.savefig("IMG/correlogram2.png")
+
+Each of the websites included review Python code as well for interactive plots!
