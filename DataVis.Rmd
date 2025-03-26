@@ -1,0 +1,776 @@
+---
+title: "Visualizing and Exploring Data"
+author: "Amanda Gahlot PhD OTR/L"
+date: "03.25.2025"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+  pdf_document:
+    toc: true
+---
+
+# Introduction
+
+
+Effective data visualization is key to enhancing transparency, improving readability, and facilitating knowledge sharing. This presentation will guide you through workflows and coding strategies in R that simplify these processes while maximizing clarity and impact. By the end, you'll have a set of practical "cheat codes" to streamline your workflow and elevate your visualizations to publication-ready standards.
+
+Overview of Topics
+
+We'll cover the following key areas:
+
+**Set-Up in R Markdown**: Learn best practices for structuring R Markdown files to enhance readability, improve workflow efficiency, and seamlessly integrate text, code, and output.
+
+**Creating and Formatting Tables** Discover strategies for generating clean, organized tables that are easily exported to Word documents for further editing and refinement.
+
+**Correlation Plots and Heatmaps** Explore methods for visualizing variable relationships using correlation matrices and heatmaps to reveal key patterns in your data.
+
+**Regression Plots and 3D Regression Lines** Learn to build compelling regression plots and 3D visualizations that effectively illustrate complex relationships.
+
+**Interactive Visualizations** Discover dynamic plotting techniques that engage viewers and allow for deeper data exploration.
+
+**Sharing Visualizations Across Platforms** Master the process of sharing your visualizations via multiple platforms, including GitHub, PowerPoint, and HTML files, ensuring your work is accessible and impactful.
+
+This structured approach will equip you with reusable tools to make your work more efficient, transparent, and visually compelling.
+
+# Set Up 
+
+## Chunks
+
+Including this chunk in your setup creates a smoother, cleaner document with minimal distractions—especially helpful when sharing visualizations with others.
+
+This code ensures that, unless otherwise specified in a specific chunk of code, all chunks will read as such.
+
+```{r prelims, echo=TRUE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, results = 'asis')
+#
+```
+
+Why Include This in Your Setup?
+
+*message = FALSE*
+
+Purpose: Suppresses package loading messages.
+
+Why Important: When you load packages like ggplot2, dplyr, or tidyverse, they often generate informational messages. While useful during development, these messages add clutter to your final document. Disabling them keeps the focus on your content.
+
+*warning = FALSE*
+
+Purpose: Hides warnings from appearing in your output.
+
+Why Important: While warnings are important during coding, they can distract readers in a presentation or report. By suppressing them, you ensure a cleaner final product. (Be mindful, though — address warnings in your code rather than relying solely on suppression.)
+
+*results = 'asis'*
+
+Purpose: Ensures that outputs like tables or text appear as intended without additional formatting applied by R Markdown.
+
+Why Important: This is particularly useful when creating formatted tables using packages like kableExtra or gt, as it ensures the structure is preserved in the output.
+
+## Set Working Directory
+
+When working with visualizations, it’s important to start by setting your working directory. This practice ensures that all saved outputs—such as tables, images (.png), and knitted HTML files—are organized within one folder. This structure simplifies the process of sharing your visualizations by allowing you to easily upload the entire folder to GitHub or other platforms.
+
+```{r set wd}
+setwd("/Users/amandagahlot/DataVis_Project") #replace your pathname here
+```
+
+Basic packages to load:
+
+```{r packages to start}
+library(tidyverse)
+library(psych)
+library(data.table)
+library(sjPlot) 
+library(sjmisc) 
+library(sjlabelled) 
+library(gtsummary)
+library(readxl)
+
+```
+Then import your data set
+
+```{r import data}
+df <- read_excel('synthetic_data.xlsx') #no need for pathname because we've set up our working directory
+
+```
+
+## Renaming variables
+
+The variable name 'acsg_curr' may be clear to you, but it may confuse others who are unfamiliar with its meaning. Renaming your variables to more descriptive labels can improve clarity, making your data visualizations and results easier for others to understand and interpret.
+
+I recommend keeping one version of your dataset unchanged for your core analysis. This ensures your original variable names, which may be essential for loops or other coding processes, remain intact. Then, import your data again under a different dataframe name specifically for relabeling variables to enhance readability in visualizations and reports.
+
+
+```{r rename}
+df_demo <- df #df_demo will be what I use for tables
+```
+
+And then rename categorical data 
+
+```{r categorical}
+df_demo$gender <- factor(df_demo$gender,
+                   levels = c(1,2,3),
+                   labels = c("Male", "Female", "Nonbinary"))
+
+df_demo$work_current <- factor(df_demo$work_current,
+                   levels = c(1,0),
+                   labels = c("Yes", "No"))
+
+df_demo$severity <- factor(df_demo$severity,
+                   levels = c(2,3),
+                   labels = c("Moderate", "Severe"))
+
+df_demo$mech_injury <- factor(df_demo$mech_injury,
+                   levels = c(1,2,3,4,5),
+                   labels = c("Fall", "MVC", "Sports", "Violence", "Pedestrian struck"))
+
+df_demo$income <- factor(df_demo$income,
+                   levels = c(1,2,3),
+                   labels = c("<52K", "52K-156K", ">156K"))
+
+df_demo$marital_status <- factor(df_demo$marital_status,
+                                 levels = c(1, 2, 3, 4),
+                                 labels = c("Single", "Married", "Divorced", "Widowed"))
+```
+
+Now I have two data frames, the original "df" which is still numeric and df_demo which is character. I will use the df_demo for tables
+
+Finally, I rename the variables with more meaningful names. Depending on your workflow, you can keep this with df_demo or create a third dataframe for visualizations, which I have done below:
+
+
+
+# Tables
+
+Creating tables in R and saving as word docs decreasing the risk of transposing numbers incorrectly and ultimately saves time. Below, I use the gt and gtsummary packages to create tables. You can use these as templates for your own work!
+
+## Descriptives
+When providing descriptive statistics on your participants:
+
+```{r packages for tables}
+#install.packages(gt)
+#install.packages(dplyr)
+library(gt)
+library(dplyr)
+```
+
+```{r summary}
+summary_table <- df_demo %>%
+  select(age_current, gender, race, income, marital_status, 
+         phys_health_index, emo_health_index, 
+         tbiqol_genconcern_tscore, spstotal, 
+         frsbe_exec, frsbe_disinhib, frsbe_apathy, frsbe_total) %>%
+  tbl_summary(
+    missing = "no",
+    type = list(
+      all_continuous() ~ "continuous",
+      all_categorical() ~ "categorical"
+    ),
+    statistic = list(
+      all_continuous() ~ "{mean} ({sd})", #can include other descriptives here
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = list(all_continuous() ~2), #rounds everything 2 decimal places
+    label = list(
+      age_current ~ "Age",
+      gender ~ "Gender",
+      race ~ "Race",
+      income ~ "Annual household income",
+      marital_status ~ "Marital status",
+      phys_health_index ~ "Physical Health Index",
+      emo_health_index ~ "Emotional Health Index",
+      tbiqol_genconcern_tscore ~ "General Cognition",
+      spstotal ~ "Social Support",
+      frsbe_exec ~ "Executive Function",
+      frsbe_disinhib ~ "Disinhibition",
+      frsbe_apathy ~ "Apathy",
+      frsbe_total ~ "Total Score"
+    )
+  ) %>%
+  modify_header(label ~ "**Variable**") %>%
+  modify_spanning_header(everything() ~ "**Participant Characteristics**") %>%
+  as_gt() %>%
+  tab_options(table.font.names = "Times New Roman")
+
+print(summary_table)
+
+```
+Then you can save your final table with the following code.
+
+**PRO TIP** 
+
+*Save your tables and visualizations in a separate code chunk as it sometimes breaks or doesn't work properly. It also allows you to tweak your code without saving it if you don't want to*
+
+```{r}
+#to save table to word doc
+library(gt)
+#install(gtsummary)
+library(gtsummary)
+
+gtsave(summary_table, filename = "summary_charac_table_1.docx")
+
+```
+
+This table is now found in my working directory as a word doc for easy formatting for manuscript preparation.
+
+## Comparison 
+
+You can use the same code, but add the "by" argument to compare results between 2 or more groups. In the example below, I want to compare the difference in characteristics by severity of injury (moderate versus severe). I've included a p value for any statistically significant differences in the groups. 
+
+```{r compare}
+by_table <- df_demo %>%
+  subset(., select = c(age_current, time_injury, gender, edu, race, work_current, income, house_size, marital_status, substance, mech_injury, severity)) %>%
+  tbl_summary(
+    missing = "no",
+    by = severity,
+    type = list(
+      c(age_current, edu, house_size, substance, time_injury) ~ "continuous",
+      c(gender, income, work_current, mech_injury) ~ "categorical"
+    ),
+    statistic = list(all_continuous() ~ "{mean} ({sd})", all_categorical() ~ "{n} ({p}%)"),
+    label = list(
+      age_current ~ "Age (years)",
+      time_injury ~ "Time since TBI (years)",
+      gender ~ "Gender",
+      race ~ "Race/Ethnicity",
+      edu ~ "Education (years)",
+      work_current ~ "Employment status",
+      income ~ "Annual household income",
+      house_size ~ "Size household",
+      marital_status ~ "Marital status",
+      substance ~ "Substance use score",
+      mech_injury ~ "Cause of injury"
+    )
+  ) %>%
+  add_p(
+    test = list(all_continuous() ~ "t.test", all_categorical() ~ "chisq.test"),
+    pvalue_fun = ~style_pvalue(.x, digits = 2)
+  ) %>%
+  add_n()
+
+print(by_table)   
+```
+And can again save to my working directory
+
+```{r save table 2}
+by_table %>% 
+  as_gt() %>% #in this example, my table was a tbl_summary object, not a gt object. To save a tbl_summary as a .docx file, you need to first convert it to a gt object using as_gt()
+  gtsave(filename = "by_table.docx")
+
+```
+
+
+# Corrplots
+
+When exploring data, it's common to use corrplots to visualize relationships between all variables. However, when dealing with a large number of variables, this can become overwhelming and less informative. To address this, I will explore two approaches:
+
+**Interactive Corrplot**: This allows you to hover over the plot to see details about the variables, making it easier to explore large datasets.
+
+**Specific, Publish-Ready Correlation Plot**: A more focused and polished correlation plot, designed for use in publications.
+
+## Interactive Corrplot
+
+
+```{r corrplot}
+library(ggplot2)
+library(reshape2)
+library(Hmisc)
+library(plotly)
+
+# Calculate the correlation matrix
+all_variables <- c("age_current", "time_injury", "gender", "edu", "work_current", "income", "severity", "substance", "acsg_prev", "acsg_curr", "acsg_retain", "acsi_prev", "acsi_curr", "acsi_retain", "acsl_prev", "acsl_curr", "acsl_retain", "acsf_prev", "acsf_curr", "acsf_retain", "acss_prev", "acss_curr", "acss_retain","tbiqol_part_sra_tscore", "tbiqol_anxiety_tscore", "tbiqol_comm_tscore", "tbiqol_ue_tscore","tbiqol_depression_tscore", "tbiqol_fatigue_tscore", "tbiqol_genconcern_tscore", "tbiqol_grief_tscore", "tbiqol_mobility_tscore", "tbiqol_headache_tscore", "tbiqol_pain_tscore", "tbiqol_posaffect_tscore", "tbiqol_resilience_tscore", "tbiqol_satissra_tscore", "tbiqol_selfesteem_tscore", "tbiqol_stigma_tscore", "spstotal", "bfi_extraversion", "bfi_agreeable", "bfi_consciousness", "bfi_neuroticism", "bfi_openness", "frsbe_apathy", "frsbe_exec", "frsbe_disinhib", "frsbe_total")
+
+all_variables <- intersect(all_variables, colnames(df))  # Ensure selected variables are in the dataframe
+
+all_variables_df <- df[, all_variables]
+
+# Compute correlation matrix and p-values
+cor_matrix <- rcorr(as.matrix(all_variables_df), type = "spearman")$r
+cor_matrix[upper.tri(cor_matrix)] <- NA
+p_matrix <- rcorr(as.matrix(all_variables_df), type = "spearman")$P
+p_matrix[is.na(p_matrix)] = .0000001
+p_matrix[upper.tri(p_matrix)] <- NA
+
+# Melt the matrices for ggplot
+melted_cor <- melt(cor_matrix, na.rm = T)
+melted_p = melt(p_matrix, na.rm = T)
+
+# Combine correlation and p-value information
+melted_cor$p = melted_p$value
+melted_cor$psig = ""
+melted_cor$psig[melted_cor$p < .05] = "*"
+melted_cor$psig[melted_cor$p < .01] = "**"
+melted_cor$psig[melted_cor$p < .001] = "***"
+melted_cor$hover_text = paste0("Variable 1: ", melted_cor$Var1, 
+                               "<br>Variable 2: ", melted_cor$Var2, 
+                               "<br>Correlation: ", round(melted_cor$value, 2), 
+                               "<br>P-value: ", round(melted_cor$p, 4))
+
+# Create a ggplot heatmap without text labels
+all_corr <- ggplot(melted_cor, aes(Var1, Var2, fill = value, text = hover_text)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "purple", mid = "white", high = "orange", 
+                       midpoint = 0, limit = c(-1, 1), space = "Lab",
+                       name = "Correlation") +
+  theme_minimal() +
+  theme(axis.text.x = element_blank(),  # Remove x axis labels
+        axis.text.y = element_blank(),  # Remove y axis labels
+        axis.title = element_blank(),  # Remove axis titles
+        axis.ticks = element_blank()) +  # Remove axis ticks
+  labs(caption = "<.05 = *, <.01 = **, <.001 = ***") +
+  ggtitle("Correlation Matrix all variables")
+
+# Convert the ggplot to an interactive plotly plot
+interactive_corr <- ggplotly(all_corr, tooltip = "text")
+
+# Show the interactive plot
+interactive_corr
+
+```
+
+This is a great option to explore your data and see some stronger and weaker relationships. But it's not all that understandable to someone who doesn't know what your variable labels mean. 
+
+So we can rewrite our labels to make it easier to understand:
+
+```{r renaming variables}
+df2<- df #df2 is what I'll use for visualizations
+df2 <- df2 %>%
+  rename(Global = acsg_retain,
+         IADL = acsi_retain,
+         Leisure = acsl_retain,
+         Fitness = acsf_retain,
+         Social = acss_retain,
+         Extraversion = bfi_extraversion,
+         Agreeable = bfi_agreeable,
+         Consciousness =bfi_consciousness,
+         Neuroticism = bfi_neuroticism,
+         Openness = bfi_openness,
+         Apathy = frsbe_apathy,
+         ExecFunc = frsbe_exec,
+         Disinhibition = frsbe_disinhib,
+         Total = frsbe_total,
+         SocialSupport = spstotal,
+         Communication = tbiqol_comm_tscore,
+         ExecFuncQOL = tbiqol_execfunc_tscore, 
+         GeneralCognition = tbiqol_genconcern_tscore,
+         UpperExtremity = tbiqol_ue_tscore, 
+         Fatigue = tbiqol_fatigue_tscore, 
+         Mobility = tbiqol_mobility_tscore, 
+         Headache = tbiqol_headache_tscore,
+         Pain = tbiqol_pain_tscore,
+         Anger = tbiqol_anger_tscore,
+         PositiveAffect = tbiqol_posaffect_tscore,
+         Age = age_current,
+         Education = edu,
+         Work = work_current,
+         SubstanceUse = substance,
+         Anxiety = tbiqol_anxiety_tscore, 
+         Depression = tbiqol_depression_tscore, 
+         Grief = tbiqol_grief_tscore, 
+         TraitResilience = tbiqol_resilience_tscore,  
+         SelfEsteem = tbiqol_selfesteem_tscore, 
+         Stigma = tbiqol_stigma_tscore,
+         TimeSinceInjury = time_injury,
+         MaritalStatus = marital_status,
+         SocialSupport = spstotal,
+         HouseholdSize = house_size,
+         PhysicalHealth = phys_health_index,
+         EmotionalHealth = emo_health_index)
+         
+```
+
+Now when we run the same code, it's a little easier to understand what we're looking at:
+
+```{r relabeled corrplot}
+all_variables <- c('Global','IADL','Leisure','Fitness','Social','Extraversion','Agreeable','Consciousness','Neuroticism','Openness','Apathy','ExecFunc','Disinhibition','Total','SocialSupport','Communication','ExecFuncQOL', 'GeneralCognition', 'UpperExtremity', 'Fatigue', 'Mobility', 'Headache','Pain', 'Anger','PositiveAffect','Age','Education','Work','SubstanceUse','Anxiety', 'Depression', 'Grief', 'TraitResilience',  'SelfEsteem', 'Stigma','TimeSinceInjury','MaritalStatus','SocialSupport','HouseholdSize','PhysicalHealth', 'EmotionalHealth')
+
+all_variables <- intersect(all_variables, colnames(df2))  # Ensure selected variables are in the dataframe
+
+all_variables_df2 <- df2[, all_variables]
+
+# Compute correlation matrix and p-values
+cor_matrix <- rcorr(as.matrix(all_variables_df2), type = "spearman")$r
+cor_matrix[upper.tri(cor_matrix)] <- NA
+p_matrix <- rcorr(as.matrix(all_variables_df2), type = "spearman")$P
+p_matrix[is.na(p_matrix)] = .0000001
+p_matrix[upper.tri(p_matrix)] <- NA
+
+# Melt the matrices for ggplot
+melted_cor <- melt(cor_matrix, na.rm = T)
+melted_p = melt(p_matrix, na.rm = T)
+
+# Combine correlation and p-value information
+melted_cor$p = melted_p$value
+melted_cor$psig = ""
+melted_cor$psig[melted_cor$p < .05] = "*"
+melted_cor$psig[melted_cor$p < .01] = "**"
+melted_cor$psig[melted_cor$p < .001] = "***"
+melted_cor$hover_text = paste0("Variable 1: ", melted_cor$Var1, 
+                               "<br>Variable 2: ", melted_cor$Var2, 
+                               "<br>Correlation: ", round(melted_cor$value, 2), 
+                               "<br>P-value: ", round(melted_cor$p, 4))
+
+# Create a ggplot heatmap without text labels
+all_corr <- ggplot(melted_cor, aes(Var1, Var2, fill = value, text = hover_text)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "purple", mid = "white", high = "orange", 
+                       midpoint = 0, limit = c(-1, 1), space = "Lab",
+                       name = "Correlation") +
+  theme_minimal() +
+  theme(axis.text.x = element_blank(),  # Remove x axis labels
+        axis.text.y = element_blank(),  # Remove y axis labels
+        axis.title = element_blank(),  # Remove axis titles
+        axis.ticks = element_blank()) +  # Remove axis ticks
+  labs(caption = "<.05 = *, <.01 = **, <.001 = ***") +
+  ggtitle("Correlation Matrix all variables")
+
+# Convert the ggplot to an interactive plotly plot
+interactive_corr <- ggplotly(all_corr, tooltip = "text")
+
+# Show the interactive plot
+interactive_corr
+
+```
+
+## Gahlot Plot
+
+To have a ready to go publishable corr plot, I created the following code: 
+ 
+```{r gahlot plot, fig.width=15,fig.height=15}
+library(ggplot2)
+library(reshape2)
+library(Hmisc)
+
+QOL_variables <- c("Global", "IADL",  "Leisure", "Fitness", "Social", "Anger", "Anxiety", "Depression", "Grief", "Resilience", "SelfEsteem", "Stigma", "TraitResilience", "PositiveAffect", "Communication", "GeneralCognition", "ExecFuncQOL", "UpperExtremity", "Fatigue", "Mobility", "Headache", "Pain")
+
+# Ensure selected variables are in the dataframe
+QOL_variables <- intersect(QOL_variables, colnames(df2))
+
+# Extract relevant data
+QOL_df2 <- df2[, QOL_variables]
+
+# Calculate correlation matrix
+cor_matrix <- rcorr(as.matrix(QOL_df2), type = "spearman")$r
+cor_matrix[upper.tri(cor_matrix)] <- NA
+p_matrix <- rcorr(as.matrix(QOL_df2), type = "spearman")$P
+p_matrix[is.na(p_matrix)] <- .0000001
+p_matrix[upper.tri(p_matrix)] <- NA
+
+# Melt the correlation matrix for ggplot
+melted_cor <- melt(cor_matrix, na.rm = TRUE)
+melted_p <- melt(p_matrix, na.rm = TRUE)
+
+melted_cor$p <- melted_p$value
+melted_cor$psig <- ""
+melted_cor$psig[melted_cor$p < .05] <- "*"
+melted_cor$psig[melted_cor$p < .01] <- "**"
+melted_cor$psig[melted_cor$p < .001] <- "***"
+
+# Create a heatmap using ggplot2
+p <- ggplot(melted_cor, aes(Var1, Var2, fill = value)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = round(value, 2)), vjust = 1, size = 6, family = "Times New Roman") +  # Adjust size and font
+  geom_text(aes(label = psig), vjust = .25, size = 6, family = "Times New Roman") +  # Adjust size and font
+  scale_fill_gradient2(low = "purple", mid = "white", high = "orange", 
+                       midpoint = 0, limit = c(-1, 1), space = "Lab",
+                       name = "Correlation") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 20, family = "Times New Roman"),  # Adjust size and font
+        axis.text.y = element_text(size = 20, family = "Times New Roman"),  # Adjust size and font
+        axis.title = element_text(size = 14, family = "Times New Roman"),
+        axis.ticks = element_line(linewidth = 1), 
+        plot.title = element_text(size = 16, family = "Times New Roman"),  # Add title font
+        plot.caption = element_text(size = 14, family = "Times New Roman")) +  # Add caption font
+  labs(caption = "<.05 = *, <.01 = **, <.001 = ***") +
+  xlab("") +
+  ylab("") +
+  ggtitle("Correlation Matrix Personal Protective Factors with ACS Variables")
+
+
+#Show plot
+print(p)
+```
+ 
+If it's not working out for you and feeling way too crunched, look at your code chunk set up: {r gahlot plot, fig.width=15,fig.height=15} and play with the fig.width and fig.height and that should solve your problems! 
+
+To save this as a png at 300 dpi to your working directory, see code below:
+
+
+```{r save gahlot plot}
+ggsave("correlation_matrix_plot.png", plot = p, width = 15, height = 15, dpi = 300)
+
+#play with width and height to get the proportions right
+```
+
+# Interactive plots
+
+Interactive plots are a great way to be truly transparent with your data and allow others to explore it. Embedding interactive charts in your code will help your collaborators and can even be transformed into an interactive website. Below, I'll review a few different types of interactive plots. Two really wonderful websites for interactive data visualization are below: 
+
+https://r-graph-gallery.com/interactive-charts.html
+
+https://www.data-to-viz.com
+
+## Scatter Plots
+
+A scatter plot is a type of data visualization that displays the relationship between two continuous variables. Each point on the plot represents an observation, with its position determined by the values of the two variables being compared. Scatter plots are useful for identifying patterns, trends, and correlations between variables, as well as spotting outliers.
+
+Below we are looking at the relationship between Apathy and Social Re-engagement after TBI
+
+```{r}
+interactive_scatter <- plot_ly(
+  data = df_demo,
+  x = ~frsbe_apathy,
+  y = ~acss_retain,
+  type = 'scatter',
+  mode = 'markers',
+  text = ~paste("Apathy Score: ", frsbe_apathy, "<br>Social Re-engagement: ", acss_retain, "<br>record_id: ", record_id), #This is what will show when you hover over a plot. You can add your record_id or Participant id variable so when you hover over an outlier, you can identify it quickly
+  hoverinfo = 'text'
+) %>%
+  layout(
+    title = "Relationship between Apathy and Social Re-engagement after TBI",
+    xaxis = list(title = 'Apathy Score'),
+    yaxis = list(title = 'Social Re-engagement')
+)
+
+# Make the plot interactive with plotly
+ggplotly(interactive_scatter, tooltip = "text")
+
+```
+
+Below is this same scatter plot, but divided by severity of injury. I might do this if I thought the relationships looked different with moderate vs severe injuries. 
+
+```{r interactive scatterplot}
+library(ggplot2)
+library(hrbrthemes)
+library(plotly)
+
+# Create the interactive scatter plot
+interactive_scatter <- df_demo %>%
+  mutate(text = paste("Apathy Score: ", frsbe_apathy, "\nSocial Re-engagement: ", acss_retain)) %>% 
+  ggplot(aes(x = frsbe_apathy, y = acss_retain, text = text)) +
+  geom_point(aes(color = severity), alpha = 0.6) +  # Color points based on severity
+  ggtitle("Relationship between Apathy and Social Re-engagement after TBI") +
+  theme_ipsum() +  
+  theme(
+    plot.title = element_text(size = 12)
+  ) +
+  ylab('Social Re-engagement') +
+  xlab('Apathy Score')
+
+# Make the plot interactive with plotly
+ggplotly(interactive_scatter, tooltip = "text")
+
+```
+
+## Bubble plot
+
+A bubble plot is a scatterplot where a third dimension is added: the value of an additional numeric variable is represented through the size of the dots.You need 3 numerical variables as input: one is represented by the X axis, one by the Y axis, and one by the dot size.
+
+In this example, I'm going to add age to the above scatter plot as my third variable.
+
+```{r more libraries, results='hide'}
+library(tidyverse)
+library(hrbrthemes)
+library(viridis)
+library(gridExtra)
+library(ggrepel)
+library(plotly)
+```
+
+```{r bubble plot, fig.width=10,fig.height=7}
+interactive_bubble <- plot_ly(
+  data = df2,
+  x = ~Apathy, #variable 1
+  y = ~Social, #variable 2
+  type = 'scatter',
+  mode = 'markers',
+  color = ~Age,
+  size = ~Age,
+   # Adjust the size and color based on age (or any other variable or can delete if you don't want those options
+  text = ~paste("Apathy Score: ", Apathy, "<br>Social Re-engagement: ", Social, "<br>Age: ", Age), #you can customize any information you want to show up when you hover : <br> breaks to a new line
+  hoverinfo = 'text',
+  marker = list(sizemode = 'diameter', opacity = 0.7, line = list(width = 1))  # Customize size behavior
+) %>%
+  layout(
+    title = "Relationship between Apathy and Social Re-engagement after TBI",
+    xaxis = list(title = 'Apathy Score'),
+    yaxis = list(title = 'Social Re-engagement')
+)
+#Make it interactive
+ggplotly(interactive_bubble, tooltip = "text")
+```
+
+In this example, I'm going to look at the relationship between grief and depression with the dot size related the person's current engagement in activities and the color for age. This is an example of adding a fourth element. 
+
+```{r bubble, fig.width=10,fig.height=7}
+
+interactive_bubble4 <- plot_ly(
+  data = df2,
+  x = ~Grief, #variable 1
+  y = ~Depression, #variable 2
+  type = 'scatter',
+  mode = 'markers',
+  color = ~Age,
+  size = ~Global,
+   # Adjust the size and color based on age (or any other variable or can delete if you don't want those options
+  text = ~paste("Grief Score: ", Grief, "<br>Depression Score: ", Depression, "<br>Age: ", Age, "<br>Global", Global), #you can customize any information you want to show up when you hover : <br> breaks to a new line
+  hoverinfo = 'text',
+  marker = list(sizemode = 'diameter', opacity = 0.7, line = list(width = 1))  # Customize size behavior
+) %>%
+  layout(
+    title = "Relationship between Apathy and Social Re-engagement after TBI",
+    xaxis = list(title = 'Apathy Score'),
+    yaxis = list(title = 'Social Re-engagement')
+)
+#Make it interactive
+ggplotly(interactive_bubble4, tooltip = "text")
+
+```
+
+
+## Interactive Heatmaps
+
+```{r, results='hide'}
+# Libraries
+library(tidyverse)
+library(hrbrthemes)
+library(viridis)
+library(heatmaply)
+library(plotly)
+# d3heatmap is not on CRAN yet, but can be found here: https://github.com/talgalili/d3heatmap
+#To load this follow these steps
+# install.packages("devtools")
+library(devtools)
+#install_github("talgalili/d3heatmap")
+library(d3heatmap)
+```
+For the heatmaps, we're going to leave the data set we've been working with to use different types of data with the information provided in each example
+
+```{r interactive heatmap, fig.width=10,fig.height=10}
+
+# Details and variations can be found here: https://www.data-to-viz.com/graph/heatmap.html
+
+# Load data
+data <- read.table("https://raw.githubusercontent.com/holtzy/data_to_viz/master/Example_dataset/multivariate.csv", header = T, sep = ";")
+colnames(data) <- gsub("\\.", " ", colnames(data))
+
+# Select a few country
+data <- data %>%
+  filter(Country %in% c("France", "Sweden", "Italy", "Spain", "England", "Portugal", "Greece", "Peru", "Chile", "Brazil", "Argentina", "Bolivia", "Venezuela", "Australia", "New Zealand", "Fiji", "China", "India", "Thailand", "Afghanistan", "Bangladesh", "United States of America", "Canada", "Burundi", "Angola", "Kenya", "Togo")) %>%
+  arrange(Country) %>%
+  mutate(Country = factor(Country, Country))
+
+# Matrix format (Remove unnecessary columns)
+mat <- data
+rownames(mat) <- mat[,1]
+mat <- mat %>% dplyr::select(-Country, -Group, -Continent)
+mat <- as.matrix(mat)
+
+# Interactive heatmap using heatmaply
+p <- heatmaply(mat,
+               dendrogram = "none",
+               xlab = "", 
+               ylab = "",
+               main = "",
+               scale = "column",
+               margins = c(60,100,40,20),
+               grid_color = "white",
+               grid_width = 0.00001,
+               titleX = FALSE,
+               hide_colorbar = TRUE,
+               branches_lwd = 0.1,
+               label_names = c("Country", "Feature:", "Value"),
+               fontsize_row = 5, 
+               fontsize_col = 5,
+               labCol = colnames(mat),
+               labRow = rownames(mat),
+               heatmap_layers = theme(axis.line = element_blank())
+)
+
+# Display the heatmap
+p
+```
+
+
+## Stacked area
+An interactive stacked plot for longitudinal data is particularly useful because it allows us to visualize changes over time in a clear, dynamic way. 
+
+In this example, we'll understand why I have so many friends my age with the name Amanda
+
+
+```{r names stacked, fig.width=10,fig.height=7}
+# Libraries
+library(ggplot2)
+library(dplyr)
+library(babynames) #just for the data for analysis, not needed for the code
+library(viridis)
+library(hrbrthemes)
+library(plotly)
+
+# Load dataset from github
+data <- babynames %>% 
+  filter(name %in% c("Ashley", "Amanda", "Jessica", "Patricia", "Linda", "Deborah", "Dorothy", "Betty", "Helen")) %>%
+  filter(sex == "F")
+
+# Stacked Plot
+names <- data %>% 
+  ggplot( aes(x=year, y=n, fill=name, text=name)) +
+    geom_area( ) +
+    scale_fill_viridis(discrete = TRUE) +
+    theme(legend.position="none") +
+    ggtitle("Popularity of American names in the previous 30 years") +
+    theme_ipsum() +
+    theme(legend.position="none")
+
+# Turn it interactive
+names <- ggplotly(names, tooltip="text")
+names
+
+```
+
+# Sharing Across Platforms
+
+There are several ways to share your tables interactive plots and charts with others. 
+
+## 1. Knitting to HTML
+One advantage of using an R Notebook is the ability to knit your content into an HTML file. This file can then be shared directly as a local file or uploaded to the web, such as on GitHub, making it easily accessible to others.
+
+Additionally, knitting your document will help identify any bugs or issues with your document as a whole that you might have missed when working in sections or specific chunks. 
+
+Once you select "Knit" to HTML, your html file will save to your working directory. You can set up your R Notebook to default knit to HTML as well with output: html at the start of your document.
+
+**PRO TIP**
+
+*Knitting works a little differently than running code.* And code that seems to work in R Studio may not work when you knit, so you may need to trouble shoot a bit. 
+
+*Additionally, you can also customize what is shown and what is not.* For example, when I share my work with a colleague who does not know R, I often 'hide' the code to make it cleaner and easier to follow.
+
+*Knitting to PDF* Doesn't allow you to use the interactive plots effectively. I recommend only knitting to html for interactive plots and data visualization.
+
+You can find out more about how to customize your output here: https://bookdown.org/yihui/rmarkdown/notebook.html
+
+## 2. Commit to Git
+
+Once you have an html file, you can host it as a website in a variety of different ways. One includes using GitHub, which (depending on your workflow) may allow for more reproducibility and transparency with your work. 
+
+
+
+
+Some general thoughts:
+
+- R is finicky when it comes to packages. Often packages that are loaded early are masked by packages loaded late. If you had a code that *was* working, but now is not-- check your packages. For me, d3heatmap package maskedmy print() function and I had to "turn off" d3heatmap to get my code to work.
+
+- There are a lot of time series visuals that I didn't review as I have worked more in cross sectional data.. explore data-to-viz.com to check them out.
+
+- Python. Seaborn library (for me) is far superior with creating side by side visuals for looking at relationships. Check it out... Start a new Google Colab and enter the code below:
+
+import seaborn as sns
+df = sns.load_dataset('iris')
+import matplotlib.pyplot as plt
+ 
+Basic correlogram
+>sns_plot = sns.pairplot(df)
+sns_plot.savefig("IMG/correlogram1.png")
+
+Or make it a regression
+>sns_plot = sns.pairplot(df, kind="reg")
+sns_plot.savefig("IMG/correlogram2.png")
