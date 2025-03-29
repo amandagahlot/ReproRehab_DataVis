@@ -546,7 +546,7 @@ interactive_scatter <- plot_ly(
   y = ~acss_retain, #y-axis variable
   type = 'scatter',
   mode = 'markers',
-  text = ~paste("Apathy Score: ", frsbe_apathy, "<br>Social Re-engagement: ", acss_retain, "<br>record_id: ", record_id), #This is what will show when you hover over a plot. You can add your record_id or Participant id variable so when you hover over an outlier, you can identify it quickly
+  text = ~paste("Apathy Score: ", frsbe_apathy, "<br>Social Re-engagement: ", acss_retain, "<br>record_id: ", record_id, "<br> Age: ",age_current), #This is what will show when you hover over a plot. You can add your record_id or Participant id variable so when you hover over an outlier, you can identify it quickly
   hoverinfo = 'text'
 ) %>%
   layout(
@@ -787,7 +787,7 @@ And so I added DataVis.html to go to the website: https://amandagahlot.github.io
 Saving interactive html widgets to embed them in other platforms and documents can be finicky. 
 
 Step 1: Required packages
-```{r}
+```{r packages for widgets}
 #install.packages("htmlwidgets")
 library(htmlwidgets)
 library(plotly)
@@ -795,7 +795,7 @@ library(plotly)
 
 Step 2: Save your plot
 
-```{r}
+```{r save widget}
 saveWidget(interactive_bubble, "interactive_plot.html", selfcontained = TRUE)
 ```
 
